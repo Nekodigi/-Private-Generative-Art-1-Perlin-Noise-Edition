@@ -1,0 +1,51 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+#include "../SimplexNoise.cginc"
+//perlin noise https://www.reddit.com/r/Unity3D/comments/756odp/is_it_possible_to_use_anything_similar_to/
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+RWTexture2D<float4> Source;
+float off;
+int dir;//0==x, 1==y
+float scaleMult;
+//float transition;
+float height;
+float width;
+int iteration;
+
+float compFunc(float4 col) {
+    //return col.x + col.y + col.z;
+    return max(max(col.x, col.y), col.z);
+}
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!//
+    //Result[id.xy] = Source[id.xy];
+    float fac = 0.99;
+    //if (Source[id.xy].x < Source[id.xy + int2(1, 0)].x) {
+        //Result[id.xy] = Source[id.xy+int2(1, 0)];
+        //Result[id.xy+int2(1, 0)] = Source[id.xy];// Result[id.xy] * fac + float4(1, 1, 1, 0) * (1 - fac);// float4(snoise(float2(id.xy / 50.0), 10) * 0.5 + 0.5, 0, 0, 0)* (1 - fac);
+    //}//
+
+    int basex = id.x * 2 + iteration%2;//snoise(float3(p.pos.xy / 1000.0 / scaleMult, time), 10) > 0
+    if (dir == 0) {
+        if (snoise(float3(float2(basex, id.y) / 400.0/scaleMult, off), 3) > 0 && compFunc(Result[int2(basex, id.y)]) <= compFunc(Result[int2(basex + 1, id.y)])) {
+            float4 temp = Result[int2(basex, id.y)];
+            Result[int2(basex, id.y)] = Result[int2(basex + 1, id.y)];
+            Result[int2(basex + 1, id.y)] = temp;//Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+        }
+        else {
+            Result[int2(basex, id.y)] = Result[int2(basex, id.y)];
+            Result[int2(basex + 1, id.y)] = Result[int2(basex + 1, id.y)];
+        }
+    }
+    //Result[id.xy] = Result[id.xy+int2(0, 1)];
+
+                           //                                             //snoise(float2(0, 1));
+    //Result[id.xy] = float4(1, 0, 0, 0);
+}
+

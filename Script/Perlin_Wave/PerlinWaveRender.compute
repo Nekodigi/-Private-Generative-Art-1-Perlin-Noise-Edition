@@ -1,0 +1,64 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+#pragma kernel Particles
+#include "../SimplexNoise.cginc"
+//perlin noise https://www.reddit.com/r/Unity3D/comments/756odp/is_it_possible_to_use_anything_similar_to/
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+float time;
+float scaleMult;
+float transition;
+float height;
+float width;
+
+struct Particle {
+    float y;
+    float starty;
+    int count;
+};
+
+RWStructuredBuffer<Particle> particles;
+//Particle particles[10000];
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+    //Result[id.xy] = Source[id.xy];
+    float fac = 0.99;
+    Result[id.xy] = Result[id.xy] * fac + float4(1, 1, 1, 0)*(1-fac);// float4(snoise(float2(id.xy / 50.0), 10) * 0.5 + 0.5, 0, 0, 0)* (1 - fac);
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    //snoise(float2(0, 1));
+    //Result[id.xy] = float4(1, 0, 0, 0);
+}
+
+[numthreads(100, 1, 1)]
+void Particles(uint3 id : SV_DispatchThreadID)
+{
+    scaleMult *= 2;
+    // TODO: insert actual code here!
+    //Result[id.xy] = Source[id.xy];
+    //Particle particle = particles[id.x].y;
+    //Result[id.x] = float4(1, 0, 0, 0);
+    //Result[id.xy] = float4(snoise(float2(id.xy / 50.0), 10) * 0.5 + 0.5, 0, 0, 0);
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    //snoise(float2(0, 1));
+    //particles[id.x].y[0];
+    Particle particle = particles[id.x * 100 + id.y];
+
+    //particle.y[0] = snoise(float2(id.xy/30.0), 10)*100;
+    //Particle particle;
+    //particles[0] = particle;
+    float4 after = float4(0, 0, 0, 0);
+    float fac = 0;
+    //if (id.y == 0) {
+        particles[id.x * 100 + id.y].y = snoise(float2(id.x / (300.0*scaleMult), time/2.0 + id.y / 1000.0f), 10) * 400;
+    //}
+    float py = particles[id.x * 100 + id.y].y;
+    float4 before = Result[float2(id.x , py)];
+    Result[float2(id.x , py + height/2) ] =  before* fac + after * (1 - fac);
+    int pid = floor(1.1);
+}
+

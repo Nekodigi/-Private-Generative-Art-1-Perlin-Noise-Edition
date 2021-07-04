@@ -1,0 +1,133 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+#pragma kernel Particles
+#include "../SimplexNoise.cginc"
+//perlin noise https://www.reddit.com/r/Unity3D/comments/756odp/is_it_possible_to_use_anything_similar_to/
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+float time;
+float transition;//0.01~1
+float speedMult;//0.1~10
+float scaleMult;//0.1~10
+float height;
+float width;
+float2 touchPos;
+
+struct Particle {
+    float2 pos;
+    float speed;
+};
+
+RWStructuredBuffer<Particle> particles;
+//Particle particles[10000];
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    // TODO: insert actual code here!
+    //Result[id.xy] = Source[id.xy];
+    float fac = 0.995;
+    Result[id.xy] = Result[id.xy] * fac + float4(0, 0, 0, 0)*(1-fac);// float4(snoise(float2(id.xy / 50.0), 10) * 0.5 + 0.5, 0, 0, 0)* (1 - fac);
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    //snoise(float2(0, 1));
+    //Result[id.xy] = float4(1, 0, 0, 0);
+}
+
+float3 hsvRgb(float3 hsv) {
+    float3 ret;
+    if (hsv.y == 0) { /* Grayscale */
+        ret.x = ret.y = ret.z = hsv.z;// v
+
+    }
+    else {
+        if (1.0 <= hsv.x) hsv.x -= 1.0;
+        hsv.x *= 6.0;
+        float i = floor(hsv.x);
+        float f = hsv.x - i;
+        float aa = hsv.z * (1 - hsv.y);
+        float bb = hsv.z * (1 - (hsv.y * f));
+        float cc = hsv.z * (1 - (hsv.y * (1 - f)));
+        if (i < 1) {
+            ret.x = hsv.z; ret.y = cc;    ret.z = aa;
+
+        }
+        else if (i < 2) {
+            ret.x = bb;    ret.y = hsv.z; ret.z = aa;
+
+        }
+        else if (i < 3) {
+            ret.x = aa;    ret.y = hsv.z; ret.z = cc;
+
+        }
+        else if (i < 4) {
+            ret.x = aa;    ret.y = bb;    ret.z = hsv.z;
+
+        }
+        else if (i < 5) {
+            ret.x = cc;    ret.y = aa;    ret.z = hsv.z;
+
+        }
+        else {
+            ret.x = hsv.z; ret.y = aa;    ret.z = bb;
+
+        }
+
+    }
+    return ret;
+}
+
+[numthreads(100, 1, 1)]
+void Particles(uint3 id : SV_DispatchThreadID)
+{
+    scaleMult *= 2;
+    // TODO: insert actual code here!
+    //Result[id.xy] = Source[id.xy];
+    //Particle particle = particles[id.x].y;
+    //Result[id.x] = float4(1, 0, 0, 0);
+    //Result[id.xy] = float4(snoise(float2(id.xy / 50.0), 10) * 0.5 + 0.5, 0, 0, 0);
+    //Result[id.xy] = float4(id.x & id.y, (id.x & 15)/15.0, (id.y & 15)/15.0, 0.0);
+    //snoise(float2(0, 1));
+    //particles[id.x].y[0];
+    //Particle particle = particles[id.x * 100 + id.y];
+    //particle.y[0] = snoise(float2(id.xy/30.0), 10)*100;
+    //Particle particle;
+    //particles[0] = particle;
+    float4 after = float4(0, 0, 0, 0);
+    float fac = 0;
+    //Particle particle = particles[id.x];
+    Particle p = particles[id.x];//!!!don't have reference
+    float angle = snoise(float3(p.pos.xy / (500.0*scaleMult), time), 10) * 10.0;
+    particles[id.x].pos += float2(cos(angle), sin(angle))*p.speed*speedMult;
+    
+    if (p.pos.x < 0 || p.pos.x > width || p.pos.y < 0 || p.pos.y > height) {
+        float fac=0.01;
+        particles[id.x].pos = float2(p.pos.x*(1-fac)+width/2*fac, p.pos.y*(1-fac)+height/2*fac);
+        particles[id.x].speed = -p.speed;
+    }
+    
+    if (touchPos.x != -1) {
+        float2 diff = particles[id.x].pos - touchPos;
+        float sqDist = diff.x * diff.x + diff.y * diff.y;
+        particles[id.x].pos += normalize(diff) / sqrt(sqDist) * 50;
+        //particles[id.x].pos += float2(1, 0);
+        //Result[p.pos] = float4(hsvRgb(float3((time / 60.0) % 0.33 + 0.33, (time / 2.0) % 1 + 0, (time / 4.0) % 0.4 + 0.6)), 0);
+    }
+    int2 pid = floor(p.pos);
+    float2 pxy = frac(p.pos);
+    float4 col = float4(1, 1, 1, 0);
+    Result[pid] = col;
+
+    //Result[float2(id.x, 100)] = float4(1, 0, 0, 0);
+    //Result[float2(100, 100)] = float4(1, 1, 1, 0);
+    //float py = particles[id.x * 1 + id.y].y;
+    //for (int i = 0; i < 4; i++) {
+        //for (int j = 0; j < 4; j++) {
+
+            //float4 before = Result[float2(id.x , py)];
+            //Result[float2(id.x , py + height/2) ] =  before* fac + after * (1 - fac);
+        //}
+    //}
+}
+
